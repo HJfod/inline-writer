@@ -13,7 +13,7 @@ namespace style {
     namespace colors {
         C_RGB chroma_key = { 0, 255, 0 };
         COLORREF chroma_key_ref = RGB(chroma_key.R, chroma_key.G, chroma_key.B);
-        C_RGB main_bg = { 255, 255, 255 };
+        C_RGB main_bg = { 20, 20, 20 };
         C_RGB main_text = { 0, 0, 0 };
     }
 }

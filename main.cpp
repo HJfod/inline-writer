@@ -1,12 +1,14 @@
 #include <iostream>
 #include <string>
+#include <iterator>
 #include <Windows.h>
 #include <thread>
 #include <fstream>
 #include "SDL/include/SDL.h"
 #include "SDL/include/SDL_syswm.h"
-#include "main.h"
-#include "style.h"
+#include <sstream>
+#include "headers/main.h"
+#include "headers/style.h"
 #undef main
 
 // all my love to this so post
@@ -14,6 +16,27 @@
 
 constexpr unsigned int $H(const char* str, int h = 0) {
     return !str[h] ? 5381 : ($H(str, h+1) * 33) ^ str[h];
+}
+
+template<char delimiter> class WordDelimitedBy : public std::string {};
+
+std::vector<std::string> split(std::string _str, char _split) {
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(_str);
+    while (std::getline(tokenStream, token, _split))
+        tokens.push_back(token);
+    return tokens;
+}
+
+int ReplaceKeyStringWithKeyID(std::string _key) {
+    int res = 0;
+    switch ($H(_key.c_str())) {
+        case $H("SPACE"):   res = VK_SPACE; break;
+        case $H("CTRL"):    res = VK_CONTROL; break;
+        case $H("SHIFT"):   res = VK_SHIFT; break;
+    }
+    return res;
 }
 
 void LoadSettings() {
@@ -28,6 +51,11 @@ void LoadSettings() {
                 case $H("emoji_prefix"):
                     app::settings::emoji_prefix = val;
                     app::settings::emoji_prefix_char = val.at(0);
+                    break;
+                case $H("control_keys"):
+                    std::vector<std::string> len = split(val, ' ');
+                    for (int i = 0; i < len.size(); i++)
+                        app::settings::control_keys.push_back(ReplaceKeyStringWithKeyID(len[i]));
                     break;
             }
         }
@@ -59,35 +87,42 @@ int main() {
 
     std::cout << "emoji_prefix: " << app::settings::emoji_prefix << ";" << std::endl;
 
-    SDL_Window* window = NULL;
+    int display_count = SDL_GetNumVideoDisplays();
+
+    std::vector<SDL_Rect> display_bounds;
+    std::vector<SDL_Window*> windows;
     SDL_Renderer* renderer = NULL;
-    SDL_Rect box;
-    box.w = 80;
-    box.h = 70;
-    box.x = 40;
-    box.y = 20;
 
-    SDL_DisplayMode DM;
-    if (SDL_GetDesktopDisplayMode(0, &DM) != 0) {
-        SDL_Log("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
-        return 1;
+    for (int i = 0; i < display_count; i++) {
+        display_bounds.push_back( SDL_Rect() );
+        SDL_GetDisplayBounds( i, &display_bounds.back() );
+        
+        SDL_Window* window;
+        windows.push_back(window);
+
+        SDL_DisplayMode DM;
+        if (SDL_GetDesktopDisplayMode(i, &DM) != 0) {
+            SDL_Log("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+            return 1;
+        }
+
+        window = SDL_CreateWindow("", display_bounds[i].x, display_bounds[i].y, DM.w, DM.h,
+            SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP);
+        renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED);
+
+        SDL_SetRenderDrawColor(renderer,
+            style::colors::chroma_key.R, style::colors::chroma_key.G, style::colors::chroma_key.B, 255);
+        SDL_RenderClear(renderer);
+
+        SDL_SetWindowOpacity(window, .5);
+        //MakeWindowTransparent(window, style::colors::chroma_key_ref);
+        SDL_RenderPresent(renderer);
     }
-
-    window = SDL_CreateWindow("", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, DM.w, DM.h,
-        SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP);
-    renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED);
-
-    SDL_SetRenderDrawColor(renderer,
-        style::colors::chroma_key.R, style::colors::chroma_key.G, style::colors::chroma_key.B, 255);
-    SDL_RenderClear(renderer);
-
-    //SDL_SetWindowOpacity(window, .5);
-    MakeWindowTransparent(window, style::colors::chroma_key_ref);
-    SDL_RenderPresent(renderer);
 
     SDL_Event event;
 
     hooks::KeyHook = SetWindowsHookEx(WH_KEYBOARD_LL, hooks::KeyboardProc, NULL, 0);
+    hooks::MouseHook = SetWindowsHookEx(WH_MOUSE_LL, hooks::MouseProc, NULL, 0);
 
     while (!app::quit) {
         if (wind::update) {
@@ -97,7 +132,8 @@ int main() {
             if (wind::corrector::visible) {
                 SDL_SetRenderDrawColor(renderer,
                     style::colors::main_bg.R, style::colors::main_bg.G, style::colors::main_bg.B, 255);
-                SDL_RenderFillRect(renderer, &box);
+
+                SDL_RenderFillRect(renderer, &wind::corrector::box);
             }
             wind::update = false;
             SDL_RenderPresent(renderer);
@@ -114,9 +150,11 @@ int main() {
                 }
     };
 
+    UnhookWindowsHookEx(hooks::MouseHook);
     UnhookWindowsHookEx(hooks::KeyHook);
 
-    SDL_DestroyWindow(window);
+    for (int i = 0; i < display_count; i++)
+        SDL_DestroyWindow(windows[i]);
     SDL_DestroyRenderer(renderer);
 
     SDL_Quit();
