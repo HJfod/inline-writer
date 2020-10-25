@@ -1,11 +1,18 @@
 #include <iostream>
 #include <Windows.h>
+#include "../SDL/include/SDL.h"
 
 namespace methods {
     RECT GetCoordinates(HWND hWnd) {
         RECT rc;
         GetWindowRect(hWnd, &rc);
         return rc;
+    }
+
+    int GetMonitorID(HMONITOR _comp) {
+        for (int i = 0; i < SDL_GetNumVideoDisplays(); i++)
+            if (_comp == app::monitors[i]) return i;
+        return 0;
     }
 
     POINT GetCaretPosition() {

@@ -3,7 +3,7 @@
 #include "../SDL/include/SDL.h"
 #include "app.h"
 
-#define HANDLED 1
+#define HANDLED 0
 
 namespace hooks {
     HHOOK KeyHook;
@@ -20,14 +20,22 @@ namespace hooks {
                     if (req) {
                         POINT c;
                         GetCursorPos(&c);
+
+                        std::cout << "swag";
                         
                         wind::corrector::box.x = c.x;
                         wind::corrector::box.y = c.y;
                         wind::corrector::SetVisible(true);
 
                         return HANDLED;
+                    } else {
+                        wind::corrector::SetVisible(false);
                     }
                 }
+                break;
+            default:
+                if (wParam != WM_RBUTTONUP && wParam != WM_MOUSEMOVE)
+                    wind::corrector::SetVisible(false);
                 break;
         }
         return CallNextHookEx(MouseHook, nCode, wParam, lParam);
@@ -53,8 +61,10 @@ namespace hooks {
                                 if (!(GetKeyState(app::settings::control_keys[i]) >> 15))
                                     req = false;
                             if (req) {
-                                POINT c = methods::GetCaretPosition();
-                                
+                                //POINT c = methods::GetCaretPosition();
+                                POINT c;
+                                GetCursorPos(&c);
+
                                 wind::corrector::box.x = c.x;
                                 wind::corrector::box.y = c.y;
                                 wind::corrector::SetVisible(true);

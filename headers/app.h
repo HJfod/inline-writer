@@ -16,6 +16,7 @@ namespace settings_paths {
 namespace app {
     bool quit = false;
     std::string key_collector = "";
+    std::vector<HMONITOR> monitors;
     namespace settings {
         std::vector<int> control_keys;
         std::string emoji_prefix = "";

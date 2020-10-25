@@ -35,6 +35,8 @@ int ReplaceKeyStringWithKeyID(std::string _key) {
         case $H("SPACE"):   res = VK_SPACE; break;
         case $H("CTRL"):    res = VK_CONTROL; break;
         case $H("SHIFT"):   res = VK_SHIFT; break;
+        case $H("ALT"):     res = VK_LMENU; break;
+        case $H("WIN"):     res = VK_LWIN; break;
     }
     return res;
 }
@@ -91,14 +93,16 @@ int main() {
 
     std::vector<SDL_Rect> display_bounds;
     std::vector<SDL_Window*> windows;
-    SDL_Renderer* renderer = NULL;
+    std::vector<SDL_Renderer*> renderers;
 
     for (int i = 0; i < display_count; i++) {
-        display_bounds.push_back( SDL_Rect() );
-        SDL_GetDisplayBounds( i, &display_bounds.back() );
+        display_bounds.push_back(SDL_Rect());
+        SDL_GetDisplayBounds(i, &display_bounds.back());
         
         SDL_Window* window;
         windows.push_back(window);
+        SDL_Renderer* renderer;
+        renderers.push_back(renderer);
 
         SDL_DisplayMode DM;
         if (SDL_GetDesktopDisplayMode(i, &DM) != 0) {
@@ -113,6 +117,11 @@ int main() {
         SDL_SetRenderDrawColor(renderer,
             style::colors::chroma_key.R, style::colors::chroma_key.G, style::colors::chroma_key.B, 255);
         SDL_RenderClear(renderer);
+
+        SDL_SysWMinfo wmInfo;
+        SDL_VERSION(&wmInfo.version);
+        SDL_GetWindowWMInfo(window, &wmInfo);
+        app::monitors.push_back(MonitorFromWindow(wmInfo.info.win.window, MONITOR_DEFAULTTONEAREST));
 
         SDL_SetWindowOpacity(window, .5);
         //MakeWindowTransparent(window, style::colors::chroma_key_ref);

@@ -1,2 +1,2 @@
 emoji_prefix $$
-control_keys SHIFT
+control_keys CTRL SHIFT
